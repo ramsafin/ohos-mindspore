@@ -1,0 +1,50 @@
+{
+  "module": {
+    "name": "inference",
+    "type": "entry",
+    "description": "$string:module_desc",
+    "mainElement": "InferenceAbility",
+    "deviceTypes": [
+      "phone"
+    ],
+    "deliveryWithInstall": true,
+    "installationFree": false,
+    "pages": "$profile:main_pages",
+    "abilities": [
+      {
+        "name": "InferenceAbility",
+        "srcEntry": "./ets/inferenceAbility/InferenceAbility.ets",
+        "description": "$string:InferenceAbility_desc",
+        "icon": "$media:layered_image",
+        "label": "$string:InferenceAbility_label",
+        "startWindowIcon": "$media:startIcon",
+        "startWindowBackground": "$color:start_window_background",
+        "exported": true,
+        "skills": [
+          {
+            "entities": [
+              "entity.system.home"
+            ],
+            "actions": [
+              "ohos.want.action.home"
+            ]
+          }
+        ]
+      }
+    ],
+    "extensionAbilities": [
+      {
+        "name": "InferenceBackupAbility",
+        "srcEntry": "./ets/inferenceBackupAbility/InferenceBackupAbility.ets",
+        "type": "backup",
+        "exported": false,
+        "metadata": [
+          {
+            "name": "ohos.extension.backup",
+            "resource": "$profile:backup_config"
+          }
+        ]
+      }
+    ]
+  }
+}

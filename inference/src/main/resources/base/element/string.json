@@ -1,0 +1,16 @@
+{
+  "string": [
+    {
+      "name": "module_desc",
+      "value": "module description"
+    },
+    {
+      "name": "InferenceAbility_desc",
+      "value": "description"
+    },
+    {
+      "name": "InferenceAbility_label",
+      "value": "label"
+    }
+  ]
+}

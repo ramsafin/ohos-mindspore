@@ -1,0 +1,11 @@
+{
+  "name": "inference",
+  "version": "1.0.0",
+  "description": "Please describe the basic information.",
+  "main": "",
+  "author": "",
+  "license": "",
+  "dependencies": {
+    "libinference.so": "file:./src/main/cpp/types/libinference"
+  }
+}
