@@ -3,22 +3,23 @@ cmake_policy(VERSION 3.18)
 
 project(App LANGUAGES C CXX)
 
-# --- OHOS-specific ---
-if(DEFINED PACKAGE_FIND_FILE)
-    include(${PACKAGE_FIND_FILE})
-endif()
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # --- Library ---
 add_library(inference SHARED
     napi_init.cpp
-    src/api.cpp
-    src/backend.cpp
-    src/context.cpp
 )
 
  target_include_directories(inference PRIVATE
     ${CMAKE_SOURCE_DIR}/include
  )
+
+ if(DEFINED PACKAGE_FIND_FILE)
+ target_include_directories(inference PUBLIC
+    ${PACKAGE_FIND_FILE}
+ )
+ endif()
 
 target_link_libraries(inference PUBLIC
     ace_napi.z
