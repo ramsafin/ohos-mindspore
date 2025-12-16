@@ -68,7 +68,8 @@ struct Index {
       const outputTensor: OutputTensor = await this.inferenceContext.run(inputTensor);
       hilog.info(LOG_DOMAIN, LOG_TAG, 'Inference complete.');
 
-      this.jsonOutput = JSON.stringify({ shape: outputTensor.shape, slice: outputTensor.data.slice(0, 10) }, null, 2);
+      const slice = Array.from(outputTensor.data.slice(0, 5), x => Number(x.toFixed(3)));
+      this.jsonOutput = JSON.stringify({ shape: outputTensor.shape, tensor: slice }, null, 2);
 
     } catch (err) {
       const msg = `Inference failed: ${err?.message ?? String(err)}`;

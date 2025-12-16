@@ -192,4 +192,8 @@ inline napi_value make_output_tensor(napi_env env, const inference::Tensor &out)
     return obj;
 }
 
+inline inference::TensorView as_view(const inference::Tensor& tensor) {
+  return { tensor.shape, std::span<const float>{tensor.data.data(), tensor.data.size()} };
+}
+
 } // namespace napi

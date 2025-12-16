@@ -40,11 +40,13 @@ napi_value ctx_run(napi_env env, napi_callback_info info) {
     napi_value args[1]{};
 
     if (napi_get_cb_info(env, info, &argc, args, &js_this, nullptr) != napi_ok) {
+        napi::throw_with_message(env, "failed napi_get_cb_info(...)");
         return nullptr;
     }
 
     ContextWrap *wrap = nullptr;
     if (napi_unwrap(env, js_this, reinterpret_cast<void **>(&wrap)) != napi_ok) {
+        napi::throw_with_message(env, "failed napi_unwrap(...) on InferenceContext");
         return nullptr;
     }
 
@@ -79,8 +81,7 @@ napi_value ctx_run(napi_env env, napi_callback_info info) {
         [](napi_env /*env*/, void *data) {
             auto *work = static_cast<RunWork *>(data);
             try {
-                inference::TensorView view{work->input_owned.shape, work->input_owned.data};
-                work->output_owned = work->context->run(view);
+                work->output_owned = work->context->run(napi::as_view(work->input_owned));
             } catch (const std::exception &e) {
                 work->error = e.what();
             }
@@ -124,6 +125,7 @@ napi_value NAPI_Global_createContext(napi_env env, napi_callback_info info) {
     napi_value args[1]{};
 
     if (napi_get_cb_info(env, info, &argc, args, nullptr, nullptr) != napi_ok) {
+        napi::throw_with_message(env, "failed napi_get_cb_info(...)");
         return nullptr;
     }
 
