@@ -1,4 +1,4 @@
-export type Shape = number[];
+export type Shape = Uint32Array;
 
 export type Device = 'CPU' | 'MOCK'; // later: 'NPU'
 
@@ -15,6 +15,7 @@ export interface InputTensor {
 }
 
 /** Output tensor returned after inference */
+// why do we have different types for tensors?
 export interface OutputTensor {
   data: Float32Array; // output tensor data, expected to be probabilities of classes
   shape: Shape; // output tensor dimensions, e.g. [1, 1000]

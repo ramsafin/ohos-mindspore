@@ -40,8 +40,8 @@ struct Index {
   }
 
   async onRunInference() {
-    const modelBuffer = new ArrayBuffer(1024 * 1024); // 1MB buffer
-    const imageBuffer = new Float32Array([1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4, 4, 5, 5, 5]); // 5 RGB pixels
+    const modelBuffer = new ArrayBuffer(16); // 16 bytes (zeros)
+    const imageBuffer = new Float32Array([1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4, 4, 5, 5, 5]); // 15 RGB pixels
 
     hilog.info(LOG_DOMAIN, LOG_TAG, 'Inference initiated...');
 
@@ -60,7 +60,7 @@ struct Index {
 
       const inputTensor: InputTensor = {
         data: imageBuffer,
-        shape: [1, 1, 5, 3] // samples, height, width, channels = 15 elements
+        shape: new Uint32Array([1, 1, 5, 3]) // samples, height, width, channels = 15 elements
       };
 
       // run inference

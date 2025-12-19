@@ -64,7 +64,7 @@ napi_value ctx_run(napi_env env, napi_callback_info info) {
     work->env = env;
     work->context = wrap->context;
 
-    if (!napi::parse_input_tensor(env, args[0], work->input_owned, work->error)) {
+    if (!napi::parse_tensor(env, args[0], work->input_owned, work->error)) {
         napi::throw_with_message(env, work->error);
         delete work;
         return nullptr;
@@ -91,7 +91,7 @@ napi_value ctx_run(napi_env env, napi_callback_info info) {
             if (!work->error.empty()) {
                 napi_reject_deferred(env, work->deferred, napi::make_error(env, work->error));
             } else {
-                napi_value out = napi::make_output_tensor(env, work->output_owned);
+                napi_value out = napi::make_tensor(env, work->output_owned);
                 napi_resolve_deferred(env, work->deferred, out);
             }
             napi_delete_async_work(env, work->work);

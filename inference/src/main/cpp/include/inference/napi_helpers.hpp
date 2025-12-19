@@ -8,81 +8,130 @@
 
 namespace napi {
 
-inline void throw_with_message(napi_env env, const std::string &msg) { napi_throw_error(env, nullptr, msg.c_str()); }
+inline void throw_with_message(napi_env env, const std::string &msg) {
+    // what is the error code (nullptr)? should we use it?
+    napi_throw_error(env, nullptr, msg.c_str());
+}
 
 inline napi_value make_error(napi_env env, const std::string &msg) {
-    napi_value m = nullptr;
-    napi_value err = nullptr;
-    napi_create_string_utf8(env, msg.c_str(), NAPI_AUTO_LENGTH, &m);
-    napi_create_error(env, nullptr, m, &err);
-    return err;
+    napi_value js_error_message{};
+    napi_create_string_utf8(env, msg.c_str(), NAPI_AUTO_LENGTH, &js_error_message);
+
+    napi_value js_error{};
+    napi_create_error(env, nullptr, js_error_message, &js_error);
+
+    return js_error;
 }
 
-inline bool get_named(napi_env env, napi_value obj, const char *name, napi_value *out) {
-    return napi_get_named_property(env, obj, name, out) == napi_ok;
+inline bool get_property(napi_env env, napi_value js_object, const char *name, napi_value *out) {
+    return napi_get_named_property(env, js_object, name, out) == napi_ok;
 }
 
-inline bool get_string(napi_env env, napi_value v, std::string &out) {
-    size_t len = 0;
-    if (napi_get_value_string_utf8(env, v, nullptr, 0, &len) != napi_ok) {
-        return false;
-    }
-    out.resize(len);
-    return napi_get_value_string_utf8(env, v, out.data(), out.size() + 1, &len) == napi_ok;
-}
-
-inline bool get_shape_u32(napi_env env, napi_value arr, inference::Shape &shape) {
-    bool is_array = false;
-    if (napi_is_array(env, arr, &is_array) != napi_ok || !is_array) {
+inline bool get_string(napi_env env, napi_value js_string, std::string &out) {
+    napi_valuetype js_type = napi_string;
+    if (napi_typeof(env, js_string, &js_type) != napi_ok || js_type != napi_string) {
         return false;
     }
 
-    uint32_t n = 0;
-    if (napi_get_array_length(env, arr, &n) != napi_ok) {
+    size_t length = 0;
+    if (napi_get_value_string_utf8(env, js_string, nullptr, 0, &length) != napi_ok) {
         return false;
     }
 
-    shape.clear();
-    shape.reserve(n);
+    std::string tmp(length + 1, '\0');
+    if (napi_get_value_string_utf8(env, js_string, tmp.data(), tmp.size(), &length) != napi_ok) {
+        return false;
+    }
 
-    for (uint32_t i = 0; i < n; ++i) {
-        napi_value el{};
-        if (napi_get_element(env, arr, i, &el) != napi_ok) {
-            return false;
-        }
+    out.assign(tmp.data(), length); // exclude '\0'
+    return true;
+}
 
-        uint32_t v = 0;
-        if (napi_get_value_uint32(env, el, &v) != napi_ok) {
-            return false;
-        }
+inline bool parse_shape(napi_env env, napi_value js_shape, inference::Shape &shape, std::string &err) {
+    // shape: Uint32Array
 
-        shape.push_back(v);
+    bool is_typed_arr = false;
+    if (napi_is_typedarray(env, js_shape, &is_typed_arr) != napi_ok || !is_typed_arr) {
+        err = "shape must be Uint32Array";
+        return false;
+    }
+
+    napi_typedarray_type js_type{};
+    size_t length = 0;
+    void *data = nullptr;
+    napi_value js_arr_buffer{};
+    size_t byte_offset = 0;
+
+    if (napi_get_typedarray_info(env, js_shape, &js_type, &length, &data, &js_arr_buffer, &byte_offset) != napi_ok) {
+        err = "napi_get_typedarray_info failed for shape";
+        return false;
+    }
+
+
+    if (js_type != napi_uint32_array) {
+        err = "shape must be Uint32Array";
+        return false;
+    }
+
+    shape.resize(length);
+
+    if (length > 0) {
+        std::memcpy(shape.data(), data, length * sizeof(std::uint32_t));
     }
 
     return true;
 }
 
-inline bool parse_model_config(napi_env env, napi_value obj, inference::ModelConfig &cfg, std::string &err) {
-    napi_value device_v{};
-    napi_value model_v{};
+inline napi_value make_shape(napi_env env, const inference::Shape &shape) {
+    const size_t length = shape.size();
+    const size_t bytes = length * sizeof(std::uint32_t);
 
-    if (!get_named(env, obj, "device", &device_v)) {
+    void *data = nullptr;
+    napi_value js_arr_buffer{};
+
+    if (napi_create_arraybuffer(env, bytes, &data, &js_arr_buffer) != napi_ok) {
+        // todo: handle array buffer creation error
+        return nullptr;
+    }
+
+    if (bytes > 0) {
+        std::memcpy(data, shape.data(), bytes);
+    }
+
+    napi_value js_shape = nullptr;
+    if (napi_create_typedarray(env, napi_uint32_array, length, js_arr_buffer, 0, &js_shape) != napi_ok) {
+        // todo: handle typed array creation error
+        return nullptr;
+    }
+
+    return js_shape;
+}
+
+inline bool parse_model_config(napi_env env, napi_value js_config, inference::ModelConfig &config, std::string &err) {
+    // js_config: { device: string, modelData: ArrayBuffer }
+
+    // device: string
+    napi_value js_device{};
+
+    if (!get_property(env, js_config, "device", &js_device)) {
         err = "ModelConfig must have { device }";
         return false;
     }
 
-    if (!get_named(env, obj, "modelData", &model_v)) {
-        err = "ModelConfig must have { modelData }";
-        return false;
-    }
-
-    if (!get_string(env, device_v, cfg.device)) {
+    if (!get_string(env, js_device, config.device)) {
         err = "ModelConfig.device must be a string";
         return false;
     }
 
+    // modelData: ArrayBuffer (binary data)
+    napi_value js_model_data{};
+    if (!get_property(env, js_config, "modelData", &js_model_data)) {
+        err = "ModelConfig must have { modelData }";
+        return false;
+    }
+
     bool is_array_buffer = false;
-    if (napi_is_arraybuffer(env, model_v, &is_array_buffer) != napi_ok) {
+    if (napi_is_arraybuffer(env, js_model_data, &is_array_buffer) != napi_ok) {
         return false;
     }
 
@@ -91,40 +140,44 @@ inline bool parse_model_config(napi_env env, napi_value obj, inference::ModelCon
         return false;
     }
 
-    void *data_ptr = nullptr;
-    size_t byte_len = 0;
-    if (napi_get_arraybuffer_info(env, model_v, &data_ptr, &byte_len) != napi_ok) {
+    void *data = nullptr;
+    size_t byte_length = 0;
+    if (napi_get_arraybuffer_info(env, js_model_data, &data, &byte_length) != napi_ok) {
         return false;
     }
 
-    cfg.model_data.resize(byte_len);
-    if (byte_len > 0) {
-        std::memcpy(cfg.model_data.data(), data_ptr, byte_len);
+    config.model_data.resize(byte_length);
+
+    if (byte_length > 0) {
+        std::memcpy(config.model_data.data(), data, byte_length);
     }
 
     return true;
 }
 
-inline bool parse_input_tensor(napi_env env, napi_value obj, inference::Tensor &in, std::string &err) {
-    napi_value data_v{};
-    napi_value shape_v{};
-    if (!get_named(env, obj, "data", &data_v)) {
-        err = "InputTensor must have { data }";
-        return false;
-    }
+inline bool parse_tensor(napi_env env, napi_value js_tensor, inference::Tensor &tensor, std::string &err) {
+    // obj: {shape: number[], data: Float32Array}
 
-    if (!get_named(env, obj, "shape", &shape_v)) {
+    // shape: number[]
+    napi_value js_shape{};
+    if (!get_property(env, js_tensor, "shape", &js_shape)) {
         err = "InputTensor must have { shape }";
         return false;
     }
 
-    if (!get_shape_u32(env, shape_v, in.shape)) {
-        err = "InputTensor.shape must be number[] (uint32)";
+    if (!parse_shape(env, js_shape, tensor.shape, err)) {
+        return false;
+    }
+
+    // data (tensor)
+    napi_value js_data{};
+    if (!get_property(env, js_tensor, "data", &js_data)) {
+        err = "InputTensor must have { data }";
         return false;
     }
 
     bool is_typed_array = false;
-    if (napi_is_typedarray(env, data_v, &is_typed_array) != napi_ok) {
+    if (napi_is_typedarray(env, js_data, &is_typed_array) != napi_ok) {
         return false;
     }
 
@@ -133,67 +186,61 @@ inline bool parse_input_tensor(napi_env env, napi_value obj, inference::Tensor &
         return false;
     }
 
-    napi_typedarray_type array_type{};
-    size_t length = 0;
-    void *data_ptr = nullptr;
-    napi_value array_buffer{};
-    size_t byte_offset = 0;
+    napi_typedarray_type js_arr_type = napi_float32_array;
+    size_t length = 0; // seems like length = bytes (60 bytes = 15 floats)
+    void *data = nullptr;
+    napi_value js_arr_buffer{};
+    size_t byte_offset = 0; // optional?
 
-    if (napi_get_typedarray_info(env, data_v, &array_type, &length, &data_ptr, &array_buffer, &byte_offset) !=
-        napi_ok) {
+    if (napi_get_typedarray_info(env, js_data, &js_arr_type, &length, &data, &js_arr_buffer, &byte_offset) != napi_ok) {
         return false;
     }
 
-    if (array_type != napi_float32_array) {
+    if (js_arr_type != napi_float32_array) {
         err = "InputTensor.data must be Float32Array";
         return false;
     }
 
-    in.data.resize(length);
+    tensor.data.resize(length / sizeof(float)); // resize to the actual length, not number of bytes
 
     if (length > 0) {
-        std::memcpy(in.data.data(), data_ptr, length * sizeof(float));
+        std::memcpy(tensor.data.data(), data, length);
     }
 
     return true;
 }
 
-inline napi_value make_output_tensor(napi_env env, const inference::Tensor &out) {
-    // allocate native buffer and attach to external ArrayBuffer finalizer
-    const size_t n = out.data.size();
-    auto *heap = new float[n];
-    if (n > 0) {
-        std::memcpy(heap, out.data.data(), n * sizeof(float));
+inline napi_value make_tensor(napi_env env, const inference::Tensor &tensor) {
+    // allocate native buffer and attach to external ArrayBuffer finalizer (destructor)
+    const size_t length = tensor.data.size();
+    auto *heap = new float[length]{}; // non-owning buffer (JS-owned)
+
+    if (length > 0) {
+        // why not use std::copy? it should be the modern way of doing this
+        std::memcpy(heap, tensor.data.data(), length * sizeof(float));
     }
 
-    napi_value array_buffer = nullptr;
-    napi_create_external_arraybuffer(
-        env, heap, n * sizeof(float),
-        [](napi_env /*env*/, void *data, void * /*hint*/) { delete[] static_cast<float *>(data); }, nullptr,
-        &array_buffer);
+    const auto deleter = [](napi_env /*env*/, void *data, void * /*hint*/) { delete[] static_cast<float *>(data); };
+    napi_value js_arr_buffer{};
+    napi_create_external_arraybuffer(env, heap, length * sizeof(float), deleter, nullptr, &js_arr_buffer);
 
-    napi_value typed_array = nullptr;
-    napi_create_typedarray(env, napi_float32_array, n, array_buffer, 0, &typed_array);
+    napi_value js_data{};
+    napi_create_typedarray(env, napi_float32_array, length, js_arr_buffer, 0, &js_data);
 
-    // shape JS array
-    napi_value shape_arr = nullptr;
-    napi_create_array_with_length(env, out.shape.size(), &shape_arr);
+    napi_value js_shape = make_shape(env, tensor.shape);
 
-    for (uint32_t i = 0; i < out.shape.size(); i++) {
-        napi_value v{};
-        napi_create_uint32(env, out.shape[i], &v);
-        napi_set_element(env, shape_arr, i, v);
-    }
+    napi_value js_tensor{};
+    napi_create_object(env, &js_tensor);
+    napi_set_named_property(env, js_tensor, "data", js_data);
+    napi_set_named_property(env, js_tensor, "shape", js_shape);
 
-    napi_value obj = nullptr;
-    napi_create_object(env, &obj);
-    napi_set_named_property(env, obj, "data", typed_array);
-    napi_set_named_property(env, obj, "shape", shape_arr);
-    return obj;
+    return js_tensor;
 }
 
-inline inference::TensorView as_view(const inference::Tensor& tensor) {
-  return { tensor.shape, std::span<const float>{tensor.data.data(), tensor.data.size()} };
+inline inference::TensorView as_view(const inference::Tensor &tensor) {
+    return {                       // clear structure creation (.field = data)
+            .shape = tensor.shape, // consider using view here
+            .data = std::span<const float>{tensor.data.data(), tensor.data.size()}};
 }
 
 } // namespace napi
