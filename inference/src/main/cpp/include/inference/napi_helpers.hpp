@@ -187,7 +187,7 @@ inline bool parse_tensor(napi_env env, napi_value js_tensor, inference::Tensor &
     }
 
     napi_typedarray_type js_arr_type = napi_float32_array;
-    size_t length = 0; // seems like length = bytes (60 bytes = 15 floats)
+    size_t length = 0; // bug: length could be the number of elements or bytes (need to work around using array buffer)
     void *data = nullptr;
     napi_value js_arr_buffer{};
     size_t byte_offset = 0; // optional?
