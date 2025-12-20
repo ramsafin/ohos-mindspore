@@ -143,6 +143,7 @@ inline bool parse_model_config(napi_env env, napi_value js_config, inference::Mo
     void *data = nullptr;
     size_t byte_length = 0;
     if (napi_get_arraybuffer_info(env, js_model_data, &data, &byte_length) != napi_ok) {
+        err = "napi_get_arraybuffer_info failed";
         return false;
     }
 
