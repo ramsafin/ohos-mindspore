@@ -1,20 +1,6 @@
-include(FetchContent)
-
-
-set(BUILD_GMOCK OFF CACHE BOOL "" FORCE)
-set(INSTALL_GTEST OFF CACHE BOOL "" FORCE)
-
-# GoogleTest
-FetchContent_Declare(
-  googletest
-  URL https://github.com/google/googletest/archive/refs/tags/v1.17.0.zip
-  DOWNLOAD_EXTRACT_TIMESTAMP true
-)
-
-FetchContent_MakeAvailable(googletest)
-
-target_compile_options(gtest PRIVATE /WX-)
-target_compile_options(gtest_main PRIVATE /WX-)
+if (CMAKE_CROSSCOMPILING)
+  message(FATAL_ERROR "Host tests must not be built when cross-compiling")
+endif()
 
 add_executable(unit_tests_host
   test_main.cpp
@@ -23,9 +9,15 @@ add_executable(unit_tests_host
 
 target_link_libraries(unit_tests_host
   PRIVATE
-    GTest::gtest_main
+    GTest::gtest
     ${PROJECT_NAME}_core
 )
 
-include(GoogleTest)
-gtest_discover_tests(unit_tests_host)
+target_compile_features(unit_tests_host
+  PRIVATE cxx_std_${CMAKE_CXX_STANDARD}
+)
+
+gtest_discover_tests(unit_tests_host
+  PROPERTIES
+    LABELS "host"
+)

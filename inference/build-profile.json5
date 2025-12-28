@@ -8,10 +8,14 @@
     },
     "externalNativeOptions": {
       "path": "./src/main/cpp/CMakeLists.txt",
-      "arguments": "",
+      "arguments": [
+        "-DENABLE_TESTING=ON",
+        "-DENABLE_DEVICE_TESTS=ON"
+      ],
       "cppFlags": "",
       "abiFilters": [
-        "x86_64"
+        "x86_64",
+        "arm64-v8a"
       ]
     }
   },

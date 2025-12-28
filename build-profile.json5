@@ -9,6 +9,8 @@
         "compatibleSdkVersion": "6.0.1(21)",
         "runtimeOS": "HarmonyOS",
         "buildOption": {
+          // Native compilation is delegated to CMake.
+          // hvigor only selects the toolchain.
           "nativeCompiler": "BiSheng",
           "strictMode": {
             "caseSensitiveCheck": true,
