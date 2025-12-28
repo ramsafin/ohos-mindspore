@@ -1,0 +1,27 @@
+{
+  "version": 5,
+  "configurePresets": [
+    {
+      "name": "host-debug",
+      "generator": "Ninja",
+      "binaryDir": "build/host",
+      "cacheVariables": {
+        "CMAKE_CXX_COMPILER": "clang-cl",
+        "CMAKE_C_COMPILER": "clang-cl",
+        "ENABLE_TESTING": "ON",
+        "ENABLE_HOST_TESTS": "ON",
+        "ENABLE_DEVICE_TESTS": "OFF"
+      }
+    },
+    {
+      "name": "ohos-debug",
+      "generator": "Ninja",
+      "binaryDir": "build/ohos",
+      "cacheVariables": {
+        "ENABLE_TESTING": "ON",
+        "ENABLE_HOST_TESTS": "OFF",
+        "ENABLE_DEVICE_TESTS": "ON"
+      }
+    }
+  ]
+}
